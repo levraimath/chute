@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Données Chute</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #f0f4f8;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+    }
+    .data-container {
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 80%;
+      max-width: 600px;
+    }
+    .data-container p {
+      font-size: 1.2em;
+      margin: 10px 0;
+      color: #333;
+    }
+    .data-container p strong {
+      color: #2196F3;
+    }
+    .status {
+      font-weight: bold;
+      font-size: 1.3em;
+      color: #FF9800;
+    }
+    .battery {
+      font-size: 1.3em;
+      color: #FF5722;
+    }
+    .alert {
+      font-size: 2.5em;
+      font-weight: bold;
+      color: #FF0000;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1.2em;
+      background-color: #FF9800;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background-color: #FF5722;
+    }
+  </style>
+</head>
+<body>
+  <div class="data-container">
+    <p id="alert" class="alert">Aucune alerte</p>
+    <p><strong>Latitude :</strong> <span id="lat">48.8566</span></p>
+    <p><strong>Longitude :</strong> <span id="lon">2.3522</span></p>
+    <p><strong>Hauteur :</strong> <span id="height">1.75</span> m</p>
+    <p><strong>Batterie :</strong> <span id="battery" class="battery">82.5%</span></p>
+
+    <!-- Bouton pour simuler une alerte de chute -->
+    <button onclick="simulateFallAlert()">Simuler une chute</button>
+  </div>
+
+  <script>
+    let lastAlert = 0;
+
+    // Demande de permission pour afficher les notifications
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission().then(permission => {
+        console.log("Permission notification:", permission);
+      });
+    }
+
+    async function getData() {
+      const url = "https://api.thingspeak.com/channels/2908410/feeds.json?api_key=OQRUK6LTRHKDC1K4&results=1";
+      const response = await fetch(url);
+      const data = await response.json();
+      const lastEntry = data.feeds[0];  // On accède à la dernière entrée
+
+      // On récupère les données et on les affiche dans le HTML
+      const alerte = lastEntry.field1;
+
+      console.log("Alerte actuelle:", alerte, "Dernière alerte:", lastAlert);
+
+      // Vérification si l'alerte passe de 0 à 1 (chute détectée)
+      if (alerte == 1 && lastAlert == 0) {
+        document.getElementById("alert").textContent = "Alerte de chute 🚨";
+        document.getElementById("alert").style.color = "#FF0000"; // rouge pour alerte
+        sendNotification();
+      } else if (alerte == 2) {
+        document.getElementById("alert").textContent = "Rien à signaler 👍";
+        document.getElementById("alert").style.color = "#4CAF50"; // vert pour pas d'alerte
+      } else {
+        document.getElementById("alert").textContent = "Aucune alerte";
+        document.getElementById("alert").style.color = "#333"; // noir pour aucune alerte
+      }
+
+      document.getElementById("lat").textContent = lastEntry.field2;
+      document.getElementById("lon").textContent = lastEntry.field3;
+      document.getElementById("height").textContent = lastEntry.field4;
+      document.getElementById("battery").textContent = lastEntry.field5 + '%';
+
+      // Mettre à jour l'alerte précédente
+      lastAlert = alerte;
+    }
+
+    // Fonction pour envoyer la notification
+    function sendNotification() {
+      if (Notification.permission === "granted") {
+        console.log("Envoi de la notification...");
+        new Notification("Alerte de chute ! 🚨", {
+          body: "Une chute a été détectée !",
+          icon: "https://image.shutterstock.com/image-vector/alert-icon-warning-symbol-260nw-1841748175.jpg" // Icône d'alerte
+        });
+      } else {
+        console.log("Notification non autorisée.");
+      }
+    }
+
+    // Simuler une alerte de chute après un délai de 5 secondes
+    function simulateFallAlert() {
+      console.log("Simulation d'une alerte de chute...");
+      setTimeout(() => {
+        document.getElementById("alert").textContent = "Alerte de chute 🚨";
+        document.getElementById("alert").style.color = "#FF0000"; // rouge pour alerte
+        sendNotification();
+      }, 5000); // Attendre 5 secondes avant d'envoyer l'alerte
+    }
+
+    getData();
+    setInterval(getData, 5000); // met à jour toutes les 5 sec
+  </script>
+</body>
+</html>
