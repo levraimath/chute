@@ -1,127 +1,244 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Données Chute</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      background-color: #f0f4f8;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      text-align: center;
-    }
-    .data-container {
-      background-color: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      width: 80%;
-      max-width: 600px;
-    }
-    .data-container p {
-      font-size: 1.2em;
-      margin: 10px 0;
-      color: #333;
-    }
-    .data-container p strong {
-      color: #2196F3;
-    }
-    .status {
-      font-weight: bold;
-      font-size: 1.3em;
-      color: #FF9800;
-    }
-    .battery {
-      font-size: 1.3em;
-      color: #FF5722;
-    }
-    .alert {
-      font-size: 2.5em;
-      font-weight: bold;
-      color: #FF0000;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Gestion des Bracelets</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f4f4f4;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #braceletsTable {
+            margin: 30px auto;
+            width: 90%;
+            border-collapse: collapse;
+        }
+
+        #braceletsTable th, #braceletsTable td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            background: white;
+        }
+
+        #addBtn {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        #formContainer {
+            display: none;
+            margin: 20px auto;
+            max-width: 400px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        #submitBtn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border: none;
+            width: 100%;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .chute {
+            color: red;
+            font-weight: bold;
+        }
+
+        .normal {
+            color: #666;
+        }
+
+        .deleteBtn {
+            background-color: #ccc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 8px;
+            font-size: 16px;
+        }
+
+        .deleteBtn:hover {
+            background-color: #999;
+        }
+
+        @media only screen and (max-width: 768px) {
+            #braceletsTable th:nth-child(3),
+            #braceletsTable th:nth-child(4),
+            #braceletsTable th:nth-child(5),
+            #braceletsTable td:nth-child(3),
+            #braceletsTable td:nth-child(4),
+            #braceletsTable td:nth-child(5) {
+                display: none;
+            }
+        }
+
+        #noBraceletsMessage {
+            font-size: 18px;
+            color: #555;
+            margin-top: 30px;
+        }
+    </style>
 </head>
 <body>
-  <div class="data-container">
-    <p id="alert" class="alert">Chargement...</p>
-    <p><strong>Latitude :</strong> <span id="lat">Chargement...</span></p>
-    <p><strong>Longitude :</strong> <span id="lon">Chargement...</span></p>
-    <p><strong>Hauteur :</strong> <span id="height">Chargement...</span></p>
-    <p><strong>Batterie :</strong> <span id="battery" class="battery">Chargement...</span></p>
-  </div>
 
-  <script>
-    let lastAlert = 0;
+<h1>📟 Gestion des Bracelets</h1>
 
-    // Demande de permission pour afficher les notifications
-    if (Notification.permission !== "granted") {
-      Notification.requestPermission().then(permission => {
-        console.log("Permission notification:", permission);
-      });
+<button id="addBtn">+ Ajouter un bracelet</button>
+
+<div id="formContainer">
+    <input type="text" id="braceletName" placeholder="Nom du bracelet">
+    <input type="text" id="apiKey" placeholder="Clé API ThingSpeak">
+    <input type="text" id="channelId" placeholder="ID du Channel">
+    <button id="submitBtn">Enregistrer</button>
+</div>
+
+<div id="noBraceletsMessage" style="display:none;">
+    Aucun bracelet enregistré pour le moment.
+</div>
+
+<table id="braceletsTable" style="display:none;">
+    <thead>
+        <tr>
+            <th>Nom</th>
+            <th>Status</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Hauteur</th>
+            <th>Batterie</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="braceletsBody">
+        <!-- Dynamique -->
+    </tbody>
+</table>
+
+<script>
+    async function getBraceletData(apiKey, channelId) {
+        const url = `https://api.thingspeak.com/channels/${channelId}/feeds.json?api_key=${apiKey}&results=1`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data.feeds && data.feeds.length > 0) {
+                return data.feeds[0];
+            } else {
+                throw new Error('Aucune donnée trouvée');
+            }
+        } catch (error) {
+            return null;
+        }
     }
 
-    async function getData() {
-      const url = "https://api.thingspeak.com/channels/2908410/feeds.json?api_key=OQRUK6LTRHKDC1K4&results=1";
-      const response = await fetch(url);
-      const data = await response.json();
-      const lastEntry = data.feeds[0];  // Dernière entrée
+    function loadBracelets() {
+        const bracelets = JSON.parse(localStorage.getItem('bracelets')) || [];
+        const tableBody = document.getElementById('braceletsBody');
+        const table = document.getElementById('braceletsTable');
+        const noBraceletsMessage = document.getElementById('noBraceletsMessage');
+        
+        tableBody.innerHTML = '';
+        
+        if (bracelets.length === 0) {
+            table.style.display = 'none';
+            noBraceletsMessage.style.display = 'block';
+        } else {
+            table.style.display = 'block';
+            noBraceletsMessage.style.display = 'none';
 
-      const alerte = lastEntry.field1;
+            bracelets.forEach(async (bracelet, index) => {
+                const braceletData = await getBraceletData(bracelet.apiKey, bracelet.channelId);
+                let row = `<tr><td>${bracelet.name}</td>`;
 
-      console.log("Alerte actuelle:", alerte, "Dernière alerte:", lastAlert);
+                if (braceletData) {
+                    const alerte = braceletData.field1 === "1"
+                        ? "<span class='chute'>🔴 CHUTE DÉTECTÉE</span>"
+                        : "<span class='normal'>Aucun problème détecté</span>";
 
-      if (alerte == 1 && lastAlert == 0) {
-        document.getElementById("alert").textContent = "Alerte de chute 🚨";
-        document.getElementById("alert").style.color = "#FF0000";
-        sendNotification();
-      } else if (alerte == 2) {
-        document.getElementById("alert").textContent = "Rien à signaler 👍";
-        document.getElementById("alert").style.color = "#4CAF50";
-      } else {
-        document.getElementById("alert").textContent = "Aucune alerte";
-        document.getElementById("alert").style.color = "#333";
-      }
+                    const batterie = parseFloat(braceletData.field5 || "0");
+                    const batterieDisplay = batterie < 30
+                        ? `<span style="color:red;">${batterie}%</span>`
+                        : `${batterie}%`;
 
-      document.getElementById("lat").textContent = lastEntry.field2;
-      document.getElementById("lon").textContent = lastEntry.field3;
-      document.getElementById("height").textContent = lastEntry.field4;
-      document.getElementById("battery").textContent = lastEntry.field5 + '%';
+                    row += `
+                        <td>${alerte}</td>
+                        <td>${braceletData.field2 || "-"}</td>
+                        <td>${braceletData.field3 || "-"}</td>
+                        <td>${braceletData.field4 || "-"}</td>
+                        <td>${batterieDisplay}</td>
+                        <td><button class="deleteBtn" onclick="deleteBracelet(${index})">🗑️</button></td>
+                    `;
+                } else {
+                    row += `<td colspan="6">Bracelet introuvable <button class="deleteBtn" onclick="deleteBracelet(${index})">🗑️</button></td>`;
+                }
 
-      lastAlert = alerte;
+                row += `</tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
     }
 
-    function sendNotification() {
-  if (Notification.permission === "granted") {
-    console.log("Envoi de la notification...");
-    new Notification("Alerte de chute ! 🚨", {
-      body: "Une chute a été détectée !",
-      icon: "https://image.shutterstock.com/image-vector/alert-icon-warning-symbol-260nw-1841748175.jpg"
-    });
-  } else if (Notification.permission !== "denied") {
-    Notification.requestPermission().then(permission => {
-      console.log("Permission notification:", permission);
-      if (permission === "granted") {
-        new Notification("Alerte de chute ! 🚨", {
-          body: "Une chute a été détectée !",
-          icon: "https://image.shutterstock.com/image-vector/alert-icon-warning-symbol-260nw-1841748175.jpg"
-        });
-      }
-    });
-  } else {
-    console.log("Notifications bloquées par l'utilisateur.");
-  }
-}
+    function deleteBracelet(index) {
+        if (confirm("Es-tu sûr de vouloir supprimer ce bracelet ?")) {
+            const bracelets = JSON.parse(localStorage.getItem('bracelets')) || [];
+            bracelets.splice(index, 1); // Supprime le bracelet à l'index donné
+            localStorage.setItem('bracelets', JSON.stringify(bracelets));
+            loadBracelets(); // Recharge la liste mise à jour
+        }
+    }
 
-    getData();
-    setInterval(getData, 5000); // toutes les 5 secondes
-  </script>
+    document.getElementById('addBtn').addEventListener('click', () => {
+        document.getElementById('formContainer').style.display = 'block';
+    });
+
+    document.getElementById('submitBtn').addEventListener('click', () => {
+        const name = document.getElementById('braceletName').value.trim();
+        const apiKey = document.getElementById('apiKey').value.trim();
+        const channelId = document.getElementById('channelId').value.trim();
+
+        if (!name || !apiKey || !channelId) {
+            alert('Remplis tous les champs bro');
+            return;
+        }
+
+        const bracelets = JSON.parse(localStorage.getItem('bracelets')) || [];
+        bracelets.push({ name, apiKey, channelId });
+        localStorage.setItem('bracelets', JSON.stringify(bracelets));
+
+        loadBracelets();
+
+        document.getElementById('braceletName').value = '';
+        document.getElementById('apiKey').value = '';
+        document.getElementById('channelId').value = '';
+        document.getElementById('formContainer').style.display = 'none';
+    });
+
+    loadBracelets();
+</script>
+
 </body>
 </html>
