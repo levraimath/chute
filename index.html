@@ -47,19 +47,6 @@
       font-weight: bold;
       color: #FF0000;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 1.2em;
-      background-color: #FF9800;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 20px;
-    }
-    button:hover {
-      background-color: #FF5722;
-    }
   </style>
 </head>
 <body>
@@ -69,9 +56,6 @@
     <p><strong>Longitude :</strong> <span id="lon">Chargement...</span></p>
     <p><strong>Hauteur :</strong> <span id="height">Chargement...</span></p>
     <p><strong>Batterie :</strong> <span id="battery" class="battery">Chargement...</span></p>
-
-    <!-- Bouton pour simuler une alerte de chute -->
-    <button onclick="simulateFallAlert()">Simuler une chute</button>
   </div>
 
   <script>
@@ -88,24 +72,22 @@
       const url = "https://api.thingspeak.com/channels/2908410/feeds.json?api_key=OQRUK6LTRHKDC1K4&results=1";
       const response = await fetch(url);
       const data = await response.json();
-      const lastEntry = data.feeds[0];  // On accède à la dernière entrée
+      const lastEntry = data.feeds[0];  // Dernière entrée
 
-      // On récupère les données et on les affiche dans le HTML
       const alerte = lastEntry.field1;
 
       console.log("Alerte actuelle:", alerte, "Dernière alerte:", lastAlert);
 
-      // Vérification si l'alerte passe de 0 à 1 (chute détectée)
       if (alerte == 1 && lastAlert == 0) {
         document.getElementById("alert").textContent = "Alerte de chute 🚨";
-        document.getElementById("alert").style.color = "#FF0000"; // rouge pour alerte
+        document.getElementById("alert").style.color = "#FF0000";
         sendNotification();
       } else if (alerte == 2) {
         document.getElementById("alert").textContent = "Rien à signaler 👍";
-        document.getElementById("alert").style.color = "#4CAF50"; // vert pour pas d'alerte
+        document.getElementById("alert").style.color = "#4CAF50";
       } else {
         document.getElementById("alert").textContent = "Aucune alerte";
-        document.getElementById("alert").style.color = "#333"; // noir pour aucune alerte
+        document.getElementById("alert").style.color = "#333";
       }
 
       document.getElementById("lat").textContent = lastEntry.field2;
@@ -113,35 +95,33 @@
       document.getElementById("height").textContent = lastEntry.field4;
       document.getElementById("battery").textContent = lastEntry.field5 + '%';
 
-      // Mettre à jour l'alerte précédente
       lastAlert = alerte;
     }
 
-    // Fonction pour envoyer la notification
     function sendNotification() {
-      if (Notification.permission === "granted") {
-        console.log("Envoi de la notification...");
+  if (Notification.permission === "granted") {
+    console.log("Envoi de la notification...");
+    new Notification("Alerte de chute ! 🚨", {
+      body: "Une chute a été détectée !",
+      icon: "https://image.shutterstock.com/image-vector/alert-icon-warning-symbol-260nw-1841748175.jpg"
+    });
+  } else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(permission => {
+      console.log("Permission notification:", permission);
+      if (permission === "granted") {
         new Notification("Alerte de chute ! 🚨", {
           body: "Une chute a été détectée !",
-          icon: "https://image.shutterstock.com/image-vector/alert-icon-warning-symbol-260nw-1841748175.jpg" // Icône d'alerte
+          icon: "https://image.shutterstock.com/image-vector/alert-icon-warning-symbol-260nw-1841748175.jpg"
         });
-      } else {
-        console.log("Notification non autorisée.");
       }
-    }
-
-    // Simuler une alerte de chute après un délai de 5 secondes
-    function simulateFallAlert() {
-      console.log("Simulation d'une alerte de chute...");
-      setTimeout(() => {
-        document.getElementById("alert").textContent = "Alerte de chute 🚨";
-        document.getElementById("alert").style.color = "#FF0000"; // rouge pour alerte
-        sendNotification();
-      }, 5000); // Attendre 5 secondes avant d'envoyer l'alerte
-    }
+    });
+  } else {
+    console.log("Notifications bloquées par l'utilisateur.");
+  }
+}
 
     getData();
-    setInterval(getData, 500); // met à jour toutes les 5 sec
+    setInterval(getData, 5000); // toutes les 5 secondes
   </script>
 </body>
 </html>
